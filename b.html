@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>함현고 독서: 전술 사격 퀴즈</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700;900&display=swap');
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            overflow-x: hidden;
+            cursor: crosshair;
+            user-select: none;
+        }
+
+        .title-font { font-family: 'Black Han Sans', sans-serif; }
+
+        /* Target Button */
+        .target-btn {
+            transition: all 0.1s;
+            position: relative;
+            overflow: hidden;
+            border-bottom: 4px solid #374151;
+        }
+        .target-btn:active {
+            transform: translateY(2px);
+            border-bottom: 2px solid #374151;
+        }
+
+        /* Bullet Hole */
+        .hole {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, #000 30%, #333 50%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.8);
+            z-index: 20;
+        }
+
+        /* Modal Animation */
+        .modal-enter { animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes modalPop {
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1a1a1a; }
+        ::-webkit-scrollbar-thumb { background: #b91c1c; border-radius: 4px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- 1. Main Menu -->
+    <div id="menu-screen" class="w-full max-w-6xl text-center space-y-6 animate-fade-in">
+        <div class="mb-8">
+            <h1 class="text-6xl md:text-8xl text-red-600 title-font tracking-tighter uppercase drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)]">
+                READING<br>WARFARE
+            </h1>
+            <p class="text-xl text-gray-400 mt-4 font-bold tracking-widest">함현고 독서 기말고사 작전 구역</p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full p-2 max-h-[60vh] overflow-y-auto" id="passage-list">
+            <!-- Passage Buttons injected via JS -->
+        </div>
+    </div>
+
+    <!-- 2. Quiz Screen -->
+    <div id="quiz-screen" class="hidden w-full max-w-3xl flex flex-col items-center space-y-6 relative z-10">
+        <!-- Progress Bar -->
+        <div class="w-full bg-gray-800 h-3 rounded-full overflow-hidden border border-gray-600 mb-2">
+            <div id="progress-bar" class="bg-red-600 h-full w-0 transition-all duration-300"></div>
+        </div>
+
+        <!-- Info Header -->
+        <div class="w-full flex justify-between items-end px-2 border-b border-gray-700 pb-2">
+            <span id="current-topic" class="text-yellow-500 font-bold text-lg truncate w-3/4">Topic</span>
+            <span class="text-2xl title-font"><span id="q-current" class="text-red-500">1</span> / <span id="q-total">7</span></span>
+        </div>
+
+        <!-- Question Box -->
+        <div class="w-full bg-gray-800 bg-opacity-90 p-8 rounded-xl border-l-4 border-red-600 shadow-2xl backdrop-blur-sm min-h-[160px] flex items-center justify-center">
+            <h2 id="question-text" class="text-2xl md:text-3xl font-bold text-center leading-relaxed text-white break-keep">Question</h2>
+        </div>
+
+        <!-- Options -->
+        <div id="options-container" class="grid grid-cols-1 gap-3 w-full mt-2">
+            <!-- Options injected via JS -->
+        </div>
+        
+        <button onclick="returnToMenu()" class="mt-8 text-gray-500 hover:text-white text-xs font-mono tracking-widest">ABORT MISSION</button>
+    </div>
+
+    <!-- 3. Result Modal (Explanation) -->
+    <div id="result-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 hidden backdrop-blur-sm">
+        <div class="bg-gray-900 border-2 border-gray-600 rounded-2xl w-full max-w-2xl p-8 m-4 modal-enter shadow-2xl relative overflow-hidden">
+            <!-- Status Bar -->
+            <div id="modal-status-bar" class="absolute top-0 left-0 w-full h-3 bg-gray-600"></div>
+            
+            <h3 id="modal-title" class="text-4xl md:text-5xl title-font mb-4 text-center mt-2">RESULT</h3>
+            
+            <div class="bg-gray-800 p-6 rounded-xl mb-6">
+                <p id="modal-feedback" class="text-xl font-bold mb-4 text-center"></p>
+                <div class="w-full h-px bg-gray-600 my-4"></div>
+                <p class="text-gray-400 text-sm mb-1 font-mono">TACTICAL ANALYSIS (해설)</p>
+                <p id="modal-rationale" class="text-lg text-gray-200 leading-relaxed break-keep"></p>
+            </div>
+
+            <button onclick="nextQuestion()" id="next-btn" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-xl text-xl transition-colors border-b-4 border-gray-900 active:border-b-0 active:translate-y-1">
+                NEXT TARGET >>
+            </button>
+        </div>
+    </div>
+
+    <!-- 4. Final Score Screen -->
+    <div id="final-screen" class="hidden w-full max-w-lg text-center space-y-8">
+        <h2 class="text-5xl title-font text-white mb-4">MISSION DEBRIEF</h2>
+        
+        <div class="bg-gray-800 p-10 rounded-3xl border border-gray-600 shadow-2xl">
+            <p class="text-gray-400 text-sm uppercase tracking-widest mb-2">Elimination Rate</p>
+            <p id="final-score" class="text-8xl font-black text-white mb-6 title-font tracking-tighter">0/7</p>
+            
+            <div id="rank-badge" class="inline-block px-8 py-2 bg-red-600 text-white font-bold text-2xl rounded-full mb-6 transform rotate-[-2deg] shadow-lg border border-red-400">RANK F</div>
+            
+            <p id="final-msg" class="text-lg text-gray-300 whitespace-pre-line">Message</p>
+        </div>
+
+        <button onclick="returnToMenu()" class="w-full bg-red-700 hover:bg-red-600 text-white font-bold py-5 rounded-xl text-2xl shadow-lg transform transition hover:scale-[1.01] border-b-4 border-red-900">
+            복귀 (RETURN)
+        </button>
+    </div>
+
+    <script>
+        // --- Data ---
+        // c: concept (핵심 개념), r: rationale (해설)
+        const quizData = {
+            "p1": {
+                title: "01. 로봇에게도 인권이 있을까",
+                questions: [
+                    { q: "로드니 브룩스는 로봇 진화의 목표가 무엇이라고 했나?", o: ["인간되기", "노동 대체", "감정 삭제", "지구 정복"], a: 0, c: "로봇의 진화 목표", r: "로드니 브룩스는 로봇이 인간을 닮아가며, 결국 '인간되기'를 목표로 진화한다고 보았습니다." },
+                    { q: "제1원칙: 로봇은 누구에게 해를 끼쳐선 안 되나?", o: ["인간", "로봇 자신", "주인", "국가"], a: 0, c: "로봇 3원칙 제1원칙", r: "제1원칙은 로봇이 '인간'에게 해를 끼치거나 방관해선 안 된다는 최우선 원칙입니다." },
+                    { q: "로봇 3원칙은 내재적 논리 구조를 갖지만 무엇의 문제를 안고 있나?", o: ["해석의 문제", "비용 문제", "속도 문제", "내구성 문제"], a: 0, c: "3원칙의 한계", r: "'해를 끼친다'는 것의 의미가 모호하여 상황에 따라 해석의 문제가 발생할 수 있습니다." },
+                    { q: "미래 로봇과의 관계, '통제'가 아닌 무엇으로 해결해야 하나?", o: ["자율과 평등", "지배와 복종", "격리와 배제", "무관심"], a: 0, c: "미래의 관계 설정", r: "글쓴이는 로봇을 통제하려는 시도는 공허하므로, 자율과 평등의 원칙이 필요하다고 봅니다." },
+                    { q: "이 글은 피노키오 이야기를 어떤 관점에서 재해석했나?", o: ["창조성", "윤리성", "오락성", "역사성"], a: 0, c: "피노키오의 관점", r: "창조자와 피조물의 관계라는 '창조성'의 관점에서 로봇 공학을 은유한다고 보았습니다." },
+                    { q: "제2원칙(명령 복종)은 제 몇 원칙에 위배되지 않아야 하나?", o: ["제1원칙", "제3원칙", "모든 원칙", "상관없음"], a: 0, c: "원칙 간 위계", r: "인간의 명령 복종(제2원칙)은 인간 보호(제1원칙)를 위배하지 않는 선에서만 지켜져야 합니다." },
+                    { q: "우리는 로봇을 '이것' 할 준비가 되었는지 물어야 한다.", o: ["받아들일", "파괴할", "수리할", "판매할"], a: 0, c: "인간의 태도", r: "로봇이 봉사할 준비보다, 인간이 로봇을 동반자로 받아들일 준비가 되었는지가 중요합니다." }
+                ]
+            },
+            "p2": {
+                title: "02. 정치 논리와 경제 논리",
+                questions: [
+                    { q: "'최소 비용 최대 효과', 효율성을 중시하는 논리는?", o: ["경제 논리", "정치 논리", "윤리 논리", "사회 논리"], a: 0, c: "경제 논리의 정의", r: "투입 대비 산출을 극대화하려는 효율성 중심의 사고는 경제 논리입니다." },
+                    { q: "정치 논리는 자원 배분의 어떤 측면을 중시하나?", o: ["분배(공평성)", "효율성", "생산성", "이윤"], a: 0, c: "정치 논리의 핵심", r: "정치 논리는 '누구에게 얼마를 줄 것인가'하는 형평성과 분배 문제를 중시합니다." },
+                    { q: "부실기업을 퇴출하지 않고 지원하는 것은 무슨 논리인가?", o: ["정치 논리", "경제 논리", "시장 논리", "경영 논리"], a: 0, c: "부실기업 지원 근거", r: "경제적으로는 퇴출이 맞으나, 고용 유지 등 사회적 안정을 위해 지원하는 건 정치 논리입니다." },
+                    { q: "시장 경제 체제에서 원칙적으로 앞서야 하는 논리는?", o: ["경제 논리", "정치 논리", "도덕 논리", "관습 논리"], a: 0, c: "시장 경제의 원칙", r: "시장에 자원 배분을 맡기는 시장 경제 체제에서는 효율성인 경제 논리가 우선입니다." },
+                    { q: "현실에서 정치 논리가 경제 논리를 앞서는 이유는?", o: ["권력이 뒷받침돼서", "비용이 적어서", "기업이 원해서", "효율적이어서"], a: 0, c: "정치 논리의 우위", r: "정치 논리는 선거, 압력 등 '권력'을 배경으로 하기 때문에 현실에서 경제 논리를 압도하곤 합니다." },
+                    { q: "경제가 정치에 떠밀려 다닐 때 손상되는 것은?", o: ["경쟁력", "공평성", "복지", "형평성"], a: 0, c: "정치 논리 과잉의 폐해", r: "정치 논리에 경제가 휘둘리면 정책 신뢰도가 떨어지고 국가 경쟁력이 손상됩니다." },
+                    { q: "정치 논리의 과잉으로 누적되는 사회적 문제는?", o: ["사회적 비효율", "국가 부채", "양극화", "환경 오염"], a: 0, c: "비효율의 누적", r: "비효율적인 자원 배분이 계속되면 사회 전체가 치러야 할 비용(시한폭탄)이 커집니다." }
+                ]
+            },
+            "p3": {
+                title: "03. 파마의 과학",
+                questions: [
+                    { q: "파마의 웨이브 원리가 되는 화학 반응은?", o: ["산화-환원 반응", "중화 반응", "연소 반응", "핵분열"], a: 0, c: "파마의 원리", r: "수소를 주고받으며 결합을 끊고 잇는 산화-환원 반응이 파마의 핵심입니다." },
+                    { q: "머리카락 탄력을 유지하는 아미노산 내 결합은?", o: ["시스틴 결합", "수소 결합", "이온 결합", "펩타이드"], a: 0, c: "시스틴 결합", r: "황(S) 원자끼리 단단히 연결된 시스틴 결합 덕분에 머리카락은 탄력을 가집니다." },
+                    { q: "파마 1제(환원제)는 머리카락에 무엇을 공급하나?", o: ["수소(H)", "산소(O)", "질소(N)", "탄소(C)"], a: 0, c: "환원제의 역할", r: "환원제는 수소를 공급하여 시스틴 결합(S-S)을 S-H 형태로 끊어줍니다." },
+                    { q: "파마 2제(산화제)의 역할은 무엇인가?", o: ["수소를 빼앗아 재결합", "수소를 공급해 절단", "단백질 녹이기", "영양 공급"], a: 0, c: "산화제의 역할", r: "산화제는 수소를 다시 빼앗아 끊어졌던 황 원자들을 새로운 모양으로 연결(재결합)합니다." },
+                    { q: "파마 직후 알칼리성 샴푸를 피하는 이유는?", o: ["산화 작용 지속(2~3일)", "냄새 때문에", "머리가 빠져서", "색이 변해서"], a: 0, c: "파마 후 관리", r: "중화 후에도 산화 작용이 2~3일간 지속되므로 알칼리성 샴푸는 이를 방해할 수 있습니다." },
+                    { q: "드라이어로 만든 웨이브가 일시적인 이유는?", o: ["물리적 변화라서", "화학적 변화라서", "핵반응이라서", "생물학적 변화라서"], a: 0, c: "물리적 vs 화학적", r: "드라이어는 수소 결합만 일시적으로 변형시키는 물리적 변화라 물이 닿으면 원래대로 돌아옵니다." },
+                    { q: "머리카락의 주성분인 단백질 이름은?", o: ["케라틴", "콜라겐", "엘라스틴", "멜라닌"], a: 0, c: "모발 성분", r: "머리카락은 '케라틴'이라는 섬유성 단백질로 구성되어 있습니다." }
+                ]
+            },
+            "p4": {
+                title: "04. 북학의 참뜻",
+                questions: [
+                    { q: "글쓴이는 모르는 것이 있으면 누구에게 물으라 했나?", o: ["길 가는 사람(누구든)", "높은 벼슬아치", "가족", "왕"], a: 0, c: "배움의 자세", r: "신분이나 지위 고하를 막론하고, 심지어 종(동복)이라도 나보다 나으면 배워야 한다고 했습니다." },
+                    { q: "좁은 식견의 선비를 비유한 동물은?", o: ["우물 안 개구리", "범 무서운 강아지", "진흙 속 미꾸라지", "독 안의 쥐"], a: 0, c: "선비 비판", r: "넓은 세상을 보지 못하고 좁은 곳에 갇혀 만족하는 선비들을 '우물 안 개구리'에 비유했습니다." },
+                    { q: "박제가는 '이 나라'가 오랑캐라도 배워야 한다고 했다.", o: ["청나라(중국)", "일본", "미국", "러시아"], a: 0, c: "북학의 대상", r: "당시 청나라를 오랑캐라 무시하던 풍조를 비판하며, 그들의 선진 문물을 배워야 한다고 역설했습니다." },
+                    { q: "글쓴이가 북경에서 돌아와서 본 박제가의 책은?", o: ["북학의", "열하일기", "징비록", "난중일기"], a: 0, c: "박제가의 저서", r: "박제가는 청나라의 문물을 보고 돌아와 실생활에 도움이 되는 내용을 담은 『북학의』를 저술했습니다." },
+                    { q: "선비들이 중국 배우기를 거부한 명분은?", o: ["주인이 오랑캐라서", "거리가 멀어서", "돈이 없어서", "말이 안 통해서"], a: 0, c: "배척의 명분", r: "명나라가 망하고 오랑캐인 청나라가 주인이 되었다는 이유로 중국의 문물조차 무시했습니다." },
+                    { q: "박제가가 기록한 대상은 주로 무엇과 관련 있나?", o: ["이용후생(실생활)", "경전 해석", "시와 노래", "예법"], a: 0, c: "이용후생", r: "농잠, 목축, 건축, 도구 등 백성들의 삶을 윤택하게 하는 '이용후생'에 관심을 두었습니다." },
+                    { q: "글쓴이는 『북학의』를 며칠 동안 읽었나?", o: ["사흘(3일)", "하루", "일주일", "한 달"], a: 0, c: "독서 기간", r: "책의 내용이 너무나 유익하고 흥미로워 사흘 동안이나 읽어도 싫증 나지 않았다고 했습니다." }
+                ]
+            },
+            "p5": {
+                title: "05. 곁에 있는 것을 사랑하라",
+                questions: [
+                    { q: "스와데시 정신의 핵심은 무엇을 우선하는 것인가?", o: ["가까운 이웃의 물건", "값싼 수입품", "대기업 제품", "명품"], a: 0, c: "스와데시 정의", r: "나와 가까운 이웃이 만든 물건을 우선적으로 소비하여 그들의 생계를 돕는 것이 핵심입니다." },
+                    { q: "글쓴이(간디)가 절대 구입하지 않겠다고 한 품목은?", o: ["면직물", "의료 기구", "연필", "시계"], a: 0, c: "거부 품목", r: "영국산 면직물은 인도 방직 산업을 파괴하고 민중에게 피해를 주므로 절대 사지 않겠다고 했습니다." },
+                    { q: "스와데시에 따르면 인도 마을은 어떤 단위가 돼야 하나?", o: ["자급자족적", "수출 중심적", "수입 의존적", "상업 중심적"], a: 0, c: "경제 단위", r: "필수품을 스스로 생산하고 소비하는 자급자족적인 경제 단위를 지향합니다." },
+                    { q: "글쓴이가 외국의 문물을 받아들이는 조건은?", o: ["성장을 저해 안 할 때", "가격이 쌀 때", "영국제일 때", "유행일 때"], a: 0, c: "수용 조건", r: "자신의 정신적 성장에 필요하고 자연에 해를 끼치지 않는다면 외국 문물도 수용한다고 했습니다." },
+                    { q: "이웃 봉사가 배타적이거나 어떠해서는 안 되나?", o: ["이기적", "이타적", "헌신적", "적극적"], a: 0, c: "봉사의 태도", r: "이웃을 돕는다는 명분으로 다른 사람을 착취하거나 이기적으로 행동해서는 안 됩니다." },
+                    { q: "인도가 가난해진 근본 원인은 무엇 때문인가?", o: ["외국 수입 상품", "국민의 나태", "자원 부족", "기후 변화"], a: 0, c: "가난의 원인", r: "외국(영국) 상품의 무분별한 수입이 인도 고유의 산업 기반을 무너뜨렸기 때문입니다." },
+                    { q: "이웃을 돕는 일은 결국 누구를 돕는 일인가?", o: ["모든 인류", "자기 자신만", "정치인", "영국"], a: 0, c: "확장성", r: "가까운 이웃을 돕는 것이 확장되어 결국 전 인류에게 봉사하는 길이 된다고 믿었습니다." }
+                ]
+            },
+            "p6": {
+                title: "06. DMZ 탄생 및 현황",
+                questions: [
+                    { q: "DMZ는 군사분계선에서 남북 각각 몇 km 후퇴했나?", o: ["2km", "4km", "1km", "10km"], a: 0, c: "DMZ 범위", r: "정전 협정에 따라 군사분계선을 중심으로 남북 각각 2km씩, 총 4km 폭으로 설정되었습니다." },
+                    { q: "DMZ 설정을 규정한 협정은?", o: ["정전 협정", "평화 협정", "강화 조약", "상호 방위 조약"], a: 0, c: "설정 근거", r: "1953년 7월 27일 체결된 정전 협정에 의해 비무장 지대(DMZ)가 만들어졌습니다." },
+                    { q: "DMZ의 총 길이는 약 몇 km인가?", o: ["248km", "100km", "500km", "1000km"], a: 0, c: "DMZ 길이", r: "서해 임진강 하구부터 동해 고성까지 약 248km(155마일)에 이릅니다." },
+                    { q: "임진강 하구~강화도의 민간 이용 가능 구역은?", o: ["한강 하구 중립 지역", "서해 5도", "판문점", "JSA"], a: 0, c: "중립 지역", r: "육지 DMZ와 달리 '한강 하구 중립 지역'은 남북 양측의 민간 선박 이용이 허용된 구역입니다." },
+                    { q: "정전 협정 조인식장의 분위기는?", o: ["침묵(악수 없음)", "화기애애", "통곡", "환호"], a: 0, c: "조인식 분위기", r: "전쟁을 잠시 멈추는 자리였기에 악수나 인사도 없이 차가운 침묵 속에서 서명만 진행되었습니다." },
+                    { q: "DMZ는 군사적 충돌을 막기 위한 어떤 지대인가?", o: ["완충 지대", "전투 지대", "상업 지대", "주거 지대"], a: 0, c: "DMZ 역할", r: "양측 군대가 직접 맞닥뜨리지 않도록 거리를 두어 충돌을 방지하는 완충 역할을 합니다." },
+                    { q: "정전 협정이 체결된 연도는?", o: ["1953년", "1950년", "1945년", "1960년"], a: 0, c: "체결 연도", r: "3년여의 전쟁 끝에 1953년 7월 27일에 정전 협정이 체결되었습니다." }
+                ]
+            },
+            "p7": {
+                title: "07. 화폐 사용의 이점",
+                questions: [
+                    { q: "돈을 쓰면 쌀 운반의 무엇을 면할 수 있나?", o: ["고통(힘듦)", "세금", "시간 낭비", "통행료"], a: 0, c: "운반의 효율성", r: "무거운 쌀을 지고 나르는 육체적 고통을 가벼운 돈을 사용함으로써 해결할 수 있습니다." },
+                    { q: "쌀을 화폐로 쓸 때 간교한 무리의 폐단은?", o: ["모래/흙 섞기", "가격 담합", "매점매석", "고리대금"], a: 0, c: "현물 화폐 폐단", r: "쌀의 양을 늘리기 위해 모래나 흙을 섞거나, 물을 뿌려 무게를 속이는 일이 발생합니다." },
+                    { q: "돈은 쌀/포목과 달리 저장 시 어떤 장점이 있나?", o: ["견고하여 안 상함", "맛이 좋음", "부피가 큼", "무거움"], a: 0, c: "보관 용이성", r: "쌀은 썩거나 벌레 먹고, 포목은 상하지만, 돈(금속)은 썩지 않고 화재에도 강합니다." },
+                    { q: "글쓴이가 본받자고 한 과거의 법은?", o: ["원법(圓法)", "대동법", "균역법", "호패법"], a: 0, c: "원법", r: "돈을 둥글게 만든 법, 즉 화폐 유통의 이점을 살린 과거의 '원법'을 시행하자고 주장합니다." },
+                    { q: "돈의 둥근 겉과 모난 구멍은 무엇을 상징하나?", o: ["하늘과 땅", "왕과 신하", "해와 달", "남녀"], a: 0, c: "돈의 형상", r: "둥근 겉은 하늘(원만함)을, 네모난 구멍은 땅(방정함)을 본뜬 것입니다." },
+                    { q: "돈을 봉급으로 주면 누구의 횡포를 막나?", o: ["권력/재벌", "농민", "상인", "외적"], a: 0, c: "부패 방지", r: "쌀 중심 경제에서 이득을 취하던 권력가와 부호들의 농간을 막고 청렴한 관리를 도울 수 있습니다." },
+                    { q: "돈은 날마다 써도 어떻게 되지 않는다고 했나?", o: ["무디어지지 않음", "사라지지 않음", "더러워지지 않음", "줄지 않음"], a: 0, c: "돈의 내구성", r: "칼(刀)로서의 돈은 쓸수록 무디어지는 쇠칼과 달리, 쓰면 쓸수록 경제를 돌게 합니다." }
+                ]
+            },
+            "p8": {
+                title: "08. 군주론",
+                questions: [
+                    { q: "마키아벨리는 안전을 위해 사랑보다 뭘 택하라 했나?", o: ["두려움", "존경", "동정", "무관심"], a: 0, c: "두려움 vs 사랑", r: "사랑은 인간의 변덕으로 쉽게 깨지지만, 두려움은 처벌 공포 때문에 쉽게 배신하지 못합니다." },
+                    { q: "두려움의 대상이 되어도 절대 건드리지 말 것은?", o: ["재산과 부녀자", "종교", "명예", "신념"], a: 0, c: "증오 회피", r: "아버지를 죽인 원수는 잊어도 뺏긴 재산은 못 잊으므로, 재산과 부녀자는 건드리면 안 됩니다." },
+                    { q: "인간은 이익을 위해 사랑을 버려도 뭘로 인해 복종하나?", o: ["처벌의 공포", "도덕심", "신앙심", "타인의 시선"], a: 0, c: "통제 수단", r: "인간은 본래 비열하여 이익을 좇지만, 처벌에 대한 두려움은 배신을 억제하는 강력한 기제입니다." },
+                    { q: "한니발 군대의 단결 원동력은 무엇이었나?", o: ["비인간적 잔인함", "따뜻한 자비심", "돈", "혈연"], a: 0, c: "한니발의 리더십", r: "한니발의 '잔인함'이 주는 두려움 덕분에 다양한 인종의 군대가 불화 없이 통제되었습니다." },
+                    { q: "반면 스키피오 군대가 반란을 일으킨 원인은?", o: ["과도한 자비심", "돈 부족", "전염병", "패전"], a: 0, c: "자비심의 폐해", r: "지나친 자비심으로 병사들을 풀어주어 군기를 문란하게 만든 것이 반란의 원인이었습니다." },
+                    { q: "현명한 군주는 누구의 의지에 기초해 행동하나?", o: ["자신(군주)", "신하", "백성", "적군"], a: 0, c: "주체적 결정", r: "사랑은 타인의 의지에 달렸지만 두려움은 군주의 의지에 달리므로, 자신의 의지에 의존해야 합니다." },
+                    { q: "인간은 아버지의 죽음보다 무엇 뺏기는 걸 못 잊나?", o: ["유산(재산)", "명예", "직위", "자유"], a: 0, c: "인간의 본성", r: "인간은 이익에 밝고 탐욕스러워 혈육의 죽음보다 재산의 상실을 더 뼈아프게 기억합니다." }
+                ]
+            },
+            "p9": {
+                title: "09. 대중 매체와 인터넷",
+                questions: [
+                    { q: "인터넷 매체의 가장 큰 특징은?", o: ["상호 작용성", "일방향성", "폐쇄성", "전문성"], a: 0, c: "인터넷의 특징", r: "쌍방향 소통인 상호 작용성 덕분에 생산자와 소비자의 경계가 허물어졌습니다." },
+                    { q: "내용과 다른 자극적 제목으로 클릭을 유도하는 기사는?", o: ["낚시성 기사", "광고성 기사", "어뷰징", "탐사 보도"], a: 0, c: "낚시성 기사", r: "독자의 호기심을 자극해 클릭 수를 높이려는 목적으로 제목을 왜곡하는 기사입니다." },
+                    { q: "트래픽을 위해 같은 기사를 반복 전송하는 행위는?", o: ["어뷰징", "피싱", "스팸", "해킹"], a: 0, c: "어뷰징", r: "검색 노출을 늘리기 위해 동일하거나 유사한 기사를 계속 쏘아 올리는 행위입니다." },
+                    { q: "일반인의 정보 참여 중 가장 소극적인 방식은?", o: ["좋아요/공유", "기사 작성", "영상 제작", "토론 참여"], a: 0, c: "참여 유형", r: "직접 콘텐츠를 만들지 않고 버튼을 누르는 행위는 간접적이고 소극적인 참여입니다." },
+                    { q: "정보 홍수 속에서 이용자가 갖춰야 할 능력은?", o: ["분별력", "암기력", "재력", "권력"], a: 0, c: "이용자 역량", r: "가짜 뉴스나 저급한 정보를 걸러내고 올바르게 판단할 수 있는 비판적 분별력이 필수입니다." },
+                    { q: "지나친 경쟁으로 정보의 질적 수준이 어떻게 됐나?", o: ["하향 평준화", "상향 평준화", "양극화", "고급화"], a: 0, c: "경쟁의 폐해", r: "조회수 경쟁에 치우쳐 자극적이고 검증되지 않은 정보가 넘쳐나며 질이 떨어졌습니다." },
+                    { q: "일반인은 전문 언론인보다 무엇에 대한 인식이 낮나?", o: ["보도/취재 윤리", "IT 기술", "최신 유행", "맞춤법"], a: 0, c: "윤리 의식 부재", r: "사실 확인이나 타인의 권리 침해 등 보도 윤리에 대한 훈련이 되어 있지 않아 문제가 발생합니다." }
+                ]
+            },
+            "p10": {
+                title: "10. 효소와 진화 유도 기술",
+                questions: [
+                    { q: "효소의 기능에 결정적 영향을 미치는 구조는?", o: ["3차 구조(입체)", "1차 구조", "색깔", "질량"], a: 0, c: "효소의 구조", r: "효소는 열쇠와 자물쇠처럼 기질과 딱 맞는 입체적인 3차 구조를 가져야 기능을 합니다." },
+                    { q: "PCR에서 DNA 이중 나선을 풀기 위한 조건은?", o: ["90℃ 열", "냉각", "효소 첨가", "전기 충격"], a: 0, c: "DNA 변성", r: "높은 열을 가하면 DNA의 수소 결합이 끊어져 두 가닥으로 풀립니다." },
+                    { q: "진화 유도 기술은 자연의 어떤 원리를 모방했나?", o: ["돌연변이/자연선택", "공생/기생", "경쟁/협력", "유전/변이"], a: 0, c: "진화의 원리", r: "무작위 돌연변이를 일으키고 그중 환경에 적합한 것을 골라내는 자연 선택 과정을 모방했습니다." },
+                    { q: "DNA 복제의 시작점이 되는 짧은 유전자 조각은?", o: ["시발체(프라이머)", "아밀레이스", "중합효소", "리보솜"], a: 0, c: "시발체", r: "DNA 중합효소가 붙어서 복제를 시작할 수 있도록 돕는 위치 표시 역할을 합니다." },
+                    { q: "진화 유도 기술 실험에 미생물을 쓰는 이유는?", o: ["빨리 자라서", "귀여워서", "구하기 어려워서", "잘 보여서"], a: 0, c: "미생물의 장점", r: "세대 교체 시간이 매우 짧아 진화의 결과를 단시간 내에 확인할 수 있기 때문입니다." },
+                    { q: "고온에서도 작용하는 DNA 중합효소의 유래는?", o: ["온천 미생물", "남극 펭귄", "심해어", "북극곰"], a: 0, c: "Taq 중합효소", r: "PCR의 고온 과정을 견디기 위해 뜨거운 온천에 사는 세균의 효소를 사용합니다." },
+                    { q: "침 속에 들어있는 녹말 분해 효소는?", o: ["아밀레이스", "라이페이스", "펩신", "트립신"], a: 0, c: "아밀레이스", r: "아밀레이스는 녹말을 분해하여 단맛이 나는 엿당 등으로 만드는 소화 효소입니다." }
+                ]
+            },
+            "p11": {
+                title: "11. 정약용의 인(仁)과 서(恕)",
+                questions: [
+                    { q: "정약용은 '인'을 실천 후 얻는 이름, 즉 뭐라 했나?", o: ["행사(行事)", "단서", "본능", "이치"], a: 0, c: "인의 정의", r: "인은 마음속에 숨어있는 것이 아니라, 구체적인 실천(행사)을 통해 비로소 성립한다고 보았습니다." },
+                    { q: "정약용이 말한 '서(恕)'의 진정한 의미는?", o: ["추기급인(성찰)", "무조건 용서", "법적 처벌", "타인 무시"], a: 0, c: "서(恕)의 의미", r: "나의 마음을 미루어 남을 헤아리는 것으로, 내가 원치 않는 것을 남에게 하지 않는 자기 성찰입니다." },
+                    { q: "정약용은 인(仁)을 무엇과 무엇의 관계라 했나?", o: ["사람과 사람", "하늘과 땅", "왕과 신하", "몸과 마음"], a: 0, c: "인의 파자", r: "사람 인(人) 변에 두 이(二)가 합쳐진 글자로, 두 사람 사이의 관계에서 지켜야 할 도리를 뜻합니다." },
+                    { q: "성리학은 측은지심을 인의 본성이 드러난 뭐로 봤나?", o: ["단서(실마리)", "결과", "완성", "목표"], a: 0, c: "사단칠정", r: "성리학에서는 마음속의 '인'이 밖으로 표출되는 실마리(단서)가 측은지심이라고 보았습니다." },
+                    { q: "정약용은 마음에는 본래 무엇이 없다고 했나?", o: ["덕(德)", "욕심", "선악", "감정"], a: 0, c: "덕의 후천성", r: "덕은 선천적인 것이 아니라 실천을 통해 쌓아가는 것이므로, 마음엔 본래 덕이 없다고 했습니다." },
+                    { q: "정약용에게 하늘을 섬기는 길(사천)은 곧 무엇인가?", o: ["인륜의 실천", "기도와 명상", "제사", "경전 암기"], a: 0, c: "사천과 인륜", r: "사람을 사랑하고 도리를 다하는 것이 곧 하늘의 뜻을 따르고 하늘을 섬기는 길이라 보았습니다." },
+                    { q: "서(恕)를 행할 때 내면에서 싸우는 두 마음은?", o: ["인심과 도심", "선과 악", "이성과 감성", "사랑과 증오"], a: 0, c: "마음의 전투", r: "이기적인 욕심(인심)과 도덕적 본심(도심) 사이의 치열한 갈등 속에서 도심을 택해야 합니다." }
+                ]
+            },
+            "p12": {
+                title: "12. 생태계의 경쟁과 지위",
+                questions: [
+                    { q: "우세한 종이 열세인 종을 사라지게 하는 원리는?", o: ["경쟁적 배제", "상호 공생", "자연 도태", "적자 생존"], a: 0, c: "경쟁적 배제", r: "같은 생태적 지위를 가진 두 종은 공존할 수 없으며, 경쟁에서 진 종은 도태된다는 원리입니다." },
+                    { q: "두 종이 공존하기 위해 생태적 지위를 나누는 것은?", o: ["자원 분할", "경쟁 심화", "서식지 파괴", "동반 멸종"], a: 0, c: "자원 분할", r: "활동 시간이나 먹이를 달리하여 경쟁을 피하고 공존하는 전략을 자원 분할이라 합니다." },
+                    { q: "생태적 지위는 공간적 지위와 무엇의 합인가?", o: ["먹이 지위", "사회적 지위", "번식 지위", "서열 지위"], a: 0, c: "생태적 지위", r: "생물이 사는 장소(공간)와 먹이 사슬에서의 역할(먹이)을 합쳐 생태적 지위라 합니다." },
+                    { q: "경쟁 안 하는데 공통 포식자 때문에 경쟁처럼 보이는 건?", o: ["외관적 경쟁", "직접 경쟁", "간접 경쟁", "허위 경쟁"], a: 0, c: "외관적 경쟁", r: "A종이 늘면 포식자가 늘고, 그 포식자가 B종을 많이 잡아먹어 B종이 줄어드는 간접적 현상입니다." },
+                    { q: "외관적 경쟁 상황에서 유리한 종의 특징은?", o: ["높은 번식력", "큰 몸집", "긴 수명", "높은 지능"], a: 0, c: "생존 유리 조건", r: "포식자에게 잡아먹혀도 빠르게 개체 수를 회복할 수 있는 높은 번식력이 생존에 유리합니다." },
+                    { q: "가우스의 짚신벌레 실험에서 우세했던 종은?", o: ["아우렐리아", "카우다툼", "둘 다", "없음"], a: 0, c: "가우스 실험", r: "아우렐리아 종이 자원을 더 효율적으로 사용하여 카우다툼 종을 경쟁에서 배제시켰습니다." },
+                    { q: "이종 개체군들이 모여 상호 작용하는 집단은?", o: ["군집", "개체군", "생태계", "바이옴"], a: 0, c: "군집의 정의", r: "한 지역에 서식하는 여러 종의 개체군들의 모임을 군집이라고 합니다." }
+                ]
+            },
+            "p13": {
+                title: "13. 이미지와 상징, 신화",
+                questions: [
+                    { q: "'이미지' 어원인 로마 장례식 마스크 단어는?", o: ["이마고(imago)", "페르소나", "미메시스", "아이콘"], a: 0, c: "이마고", r: "죽은 사람의 얼굴을 본뜬 밀랍 마스크 '이마고'에서 이미지라는 단어가 유래했습니다." },
+                    { q: "신화는 인간이 무엇의 한계를 초월하려 상상한 결과?", o: ["죽음(유한성)", "가난", "권력욕", "무지"], a: 0, c: "신화의 기원", r: "죽음이라는 피할 수 없는 운명을 거부하고 영속성을 꿈꾸는 상상력에서 신화가 탄생했습니다." },
+                    { q: "이미지의 '보이지 않는 의미'는 무엇과 관련되나?", o: ["심리/정서", "신체/물리", "경제/사회", "정치/법"], a: 0, c: "이미지의 속성", r: "이미지는 단순한 시각적 형상을 넘어 인간 내면의 깊은 감정과 무의식을 반영합니다." },
+                    { q: "19세기 서유럽이 원시적 사고를 무시하고 옹호한 사상은?", o: ["합리/실증주의", "낭만주의", "신비주의", "해체주의"], a: 0, c: "19세기 사상", r: "이성과 과학을 중시한 합리주의는 신화나 상징을 비과학적인 원시적 사고로 치부했습니다." },
+                    { q: "이마고는 죽음을 거부하고 무엇을 연장하려는 의미?", o: ["삶", "권력", "고통", "전쟁"], a: 0, c: "이마고의 의미", r: "죽은 자의 모습을 생생하게 남김으로써 삶이 끝나지 않고 이어지기를 바라는 염원입니다." },
+                    { q: "반복되는 신화적 이미지는 인류의 공통된 무엇을 보여주나?", o: ["한계적 상황", "경제 발전", "기술 진보", "언어 발달"], a: 0, c: "보편적 상황", r: "시공간을 초월한 유사한 신화들은 인간이 공통적으로 마주하는 죽음이나 운명 같은 한계를 보여줍니다." },
+                    { q: "이미지와 신화 연구는 어떤 학문으로 격상될 수 있나?", o: ["인문주의/인류학", "경제학", "물리학", "공학"], a: 0, c: "학문적 가치", r: "인간 본연의 심리를 탐구한다는 점에서 단순 고증을 넘어 새로운 인류학적 가치를 지닙니다." }
+                ]
+            },
+            "p14": {
+                title: "14. 필립스 곡선과 스태그플레이션",
+                questions: [
+                    { q: "필립스 곡선은 실업률과 무엇의 반비례 관계인가?", o: ["물가 상승률", "환율", "금리", "주가"], a: 0, c: "필립스 곡선", r: "실업률이 낮으면 물가가 오르고, 실업률이 높으면 물가가 떨어지는 역의 관계를 나타냅니다." },
+                    { q: "경기 침체와 물가 상승이 동시에 일어나는 현상은?", o: ["스태그플레이션", "디플레이션", "인플레이션", "리세션"], a: 0, c: "스태그플레이션", r: "Stagnation(경기 침체)과 Inflation(물가 상승)의 합성어로, 경제에 큰 고통을 줍니다." },
+                    { q: "공급 충격(원자재가 상승) 시 총공급곡선 이동 방향은?", o: ["왼쪽", "오른쪽", "위쪽", "아래쪽"], a: 0, c: "공급 충격", r: "생산 비용 증가로 기업 생산이 줄어들어 공급 곡선이 왼쪽(감소 방향)으로 이동합니다." },
+                    { q: "프리드먼은 장기 공급곡선이 어떤 형태라 했나?", o: ["수직", "수평", "우상향", "우하향"], a: 0, c: "장기 공급곡선", r: "장기적으로 산출량은 물가와 무관하게 생산 기술 등에 의해 결정되므로 수직선 형태입니다." },
+                    { q: "물가 상승률 + 실업률을 더한 수치는?", o: ["고통 지수", "행복 지수", "빈곤 지수", "개발 지수"], a: 0, c: "고통 지수", r: "국민이 피부로 느끼는 경제적 어려움을 나타내는 지표로 두 나쁜 지표의 합입니다." },
+                    { q: "확장 재정 정책(돈 풀기) 시 총수요 곡선 이동 방향은?", o: ["오른쪽", "왼쪽", "변화 없음", "수직"], a: 0, c: "총수요 이동", r: "정부 지출이 늘어나면 사회 전체의 수요가 증가하여 곡선이 오른쪽으로 이동합니다." },
+                    { q: "필립스 곡선이 설득력을 잃게 된 계기인 사건은?", o: ["스태그플레이션", "대공황", "산업혁명", "IT버블"], a: 0, c: "이론의 한계", r: "물가와 실업률이 동시에 오르는 스태그플레이션은 기존 필립스 곡선으로는 설명이 불가능했습니다." }
+                ]
+            },
+            "p15": {
+                title: "15. 네트워크 이론과 최적화",
+                questions: [
+                    { q: "복잡계 네트워크에서 연결이 집중된 핵심 노드는?", o: ["허브", "링크", "서버", "터미널"], a: 0, c: "허브", r: "수많은 연결선이 모여 있어 네트워크의 중심 역할을 하는 노드를 허브라고 합니다." },
+                    { q: "개인 이익 추구로 사회 효율이 떨어지는 정도 값은?", o: ["PoA(무질서도)", "GDP", "KPI", "ROI"], a: 0, c: "PoA", r: "Price of Anarchy(무질서의 대가)는 개인이기주의가 전체 최적화에 비해 얼마나 비효율적인지 보여줍니다." },
+                    { q: "복잡계 네트워크 형성의 주된 원리는?", o: ["빈익빈 부익부", "적자생존", "평등 분배", "무작위"], a: 0, c: "성장 원리", r: "연결이 많은 노드가 더 많은 연결을 가져가는 '부익부 빈익빈' 현상에 의해 허브가 탄생합니다." },
+                    { q: "항공망(복잡계)은 고속도로망보다 자원 이용이 어떤가?", o: ["효율적이다", "비효율적이다", "똑같다", "모른다"], a: 0, c: "네트워크 효율성", r: "허브를 거쳐 목적지에 빠르게 도달할 수 있어 이동 경로가 짧고 효율적입니다." },
+                    { q: "네트워크 이론에서 '선'을 무엇이라 부르나?", o: ["연결선(링크)", "루트", "포트", "게이트"], a: 0, c: "용어 정의", r: "노드(점)와 노드를 이어주는 관계를 연결선 혹은 링크라고 합니다." },
+                    { q: "출근길 문제에서 개인이 선호하는 최적화는?", o: ["상대적 최적화", "절대적 최적화", "사회적 최적화", "수학적 최적화"], a: 0, c: "상대적 최적화", r: "전체 효율과 상관없이 나에게 가장 유리한 선택을 하는 것을 상대적 최적화라 합니다." },
+                    { q: "복잡계 네트워크는 일부 고장에도 무엇이 가능한가?", o: ["우회", "복구", "증식", "재부팅"], a: 0, c: "안정성", r: "경로가 다양하여 일부가 끊겨도 다른 길로 돌아갈 수 있어 전체 시스템이 붕괴되지 않습니다." }
+                ]
+            },
+            "p16": {
+                title: "16. 원자 모형의 변천",
+                questions: [
+                    { q: "러더퍼드가 알파선 실험으로 발견한 것은?", o: ["원자핵", "전자", "중성자", "양성자"], a: 0, c: "원자핵 발견", r: "알파선이 튕겨 나가는 것을 보고 원자 중심에 무겁고 양전하를 띤 핵이 있음을 발견했습니다." },
+                    { q: "보어는 전자가 특정한 이것을 가진 궤도만 돈다고 했다.", o: ["에너지 준위", "속도", "질량", "색깔"], a: 0, c: "에너지 준위", r: "전자는 아무 곳이나 돌지 않고, 불연속적인 특정 에너지 값을 가진 궤도에만 존재합니다." },
+                    { q: "톰슨의 '푸딩에 건포도 박힌' 모양의 모형 별칭은?", o: ["건포도빵 모형", "태양계 모형", "행성 모형", "당구공 모형"], a: 0, c: "톰슨 모형", r: "양전하 구름 속에 전자가 콕콕 박혀 있는 모습이 건포도빵 같다고 하여 붙여진 이름입니다." },
+                    { q: "러더퍼드 모형의 한계: 전자가 에너지를 잃고 어떻게 되나?", o: ["핵에 붕괴(충돌)", "탈출", "정지", "폭발"], a: 0, c: "러더퍼드의 한계", r: "전자기 이론에 따르면 회전하는 전자는 에너지를 잃고 핵으로 빨려 들어가야 하는데, 실제 원자는 안정적입니다." },
+                    { q: "전자가 높은 에너지 준위에서 낮은 곳으로 갈 때 방출하는 건?", o: ["빛(에너지)", "열", "소리", "전파"], a: 0, c: "에너지 방출", r: "에너지 차이만큼을 빛(전자기파)의 형태로 방출하며, 이를 스펙트럼으로 관찰할 수 있습니다." },
+                    { q: "에너지 준위 차이가 클 때 방출되는 빛의 색은?", o: ["파랑 계통", "빨강 계통", "노랑 계통", "초록 계통"], a: 0, c: "빛의 파장", r: "에너지가 클수록 파장이 짧은 파란색이나 보라색 계통의 빛이 나옵니다." },
+                    { q: "최초로 근대 원자설을 주장한 사람은?", o: ["돌턴", "아리스토텔레스", "보어", "아인슈타인"], a: 0, c: "돌턴", r: "물질은 더 이상 쪼개지지 않는 입자(원자)로 구성된다는 근대적 원자론을 정립했습니다." }
+                ]
+            },
+            "p17": {
+                title: "17. 가치의 객관주의와 주관주의",
+                questions: [
+                    { q: "가치는 사물 안에 객관적으로 실재한다고 본 철학자는?", o: ["플라톤", "홉스", "니체", "스피노자"], a: 0, c: "객관주의", r: "플라톤은 가치(이데아)가 인간의 인식과 무관하게 외부에 영원불변하게 존재한다고 보았습니다." },
+                    { q: "가치 주관주의자는 가치가 인간의 무엇에 의존한다고 봤나?", o: ["욕구", "이성", "양심", "지식"], a: 0, c: "주관주의", r: "홉스나 스피노자는 인간이 대상을 욕구하기 때문에 그것이 가치 있어진다고 보았습니다." },
+                    { q: "하르트만: 가치 자체는 불변이나 인간의 무엇은 변하나?", o: ["가치 감각(안목)", "도덕성", "지능", "본성"], a: 0, c: "하르트만", r: "미의 이데아는 그대로지만, 시대와 장소에 따라 미를 알아보는 인간의 안목은 변한다고 절충했습니다." },
+                    { q: "스피노자: 선이라서 욕구하는 게 아니라, 욕구해서 선이다.", o: ["O", "X", "모름", "반대임"], a: 0, c: "스피노자 명제", r: "가치의 원천을 대상이 아닌 주체의 욕구에 둠으로써 가치 주관주의를 명확히 했습니다." },
+                    { q: "가치 주관주의는 어떤 윤리적 입장과 연결되나?", o: ["가치 상대주의", "가치 절대주의", "공리주의", "의무론"], a: 0, c: "상대주의", r: "가치 기준이 사람마다 다르므로 절대적 기준은 없다는 가치 상대주의로 이어집니다." },
+                    { q: "셀러는 이 세계에 가치 없는 사물이 몇 개라 했나?", o: ["한 개도 없다", "많다", "반반이다", "모른다"], a: 0, c: "셀러", r: "모든 사물에는 가치가 내재해 있으므로 가치 없는 사물은 존재하지 않는다고 했습니다." },
+                    { q: "장미의 아름다움도 장미 속에 있다고 보는 입장은?", o: ["가치 객관주의", "가치 주관주의", "허무주의", "회의주의"], a: 0, c: "객관주의 예시", r: "붉은 색깔처럼 아름다움이라는 가치 또한 사물의 객관적 속성이라고 보는 입장입니다." }
+                ]
+            },
+            "p18": {
+                title: "18. 임대차보호법",
+                questions: [
+                    { q: "주택임대차보호법상 보장되는 최단 존속 기간은?", o: ["2년", "1년", "3년", "5년"], a: 0, c: "주택 최단기간", r: "임차인의 주거 안정을 위해 법으로 최소 2년의 거주 기간을 보장합니다." },
+                    { q: "상가 임차인의 갱신 요구권은 최대 몇 년까지 보장되나?", o: ["10년", "5년", "2년", "무제한"], a: 0, c: "상가 갱신기간", r: "초기 투자비 회수 등을 위해 최대 10년까지 영업할 수 있도록 갱신을 보장합니다." },
+                    { q: "주택 임대인이 갱신 거절 가능한 월세 연체액 기준은?", o: ["2기(두 달)분", "1기분", "3기분", "6기분"], a: 0, c: "거절 사유", r: "주택은 2기, 상가는 3기의 차임액에 달하도록 연체하면 갱신을 거절할 수 있습니다." },
+                    { q: "갱신 거절 사유인 '실거주' 범위에 포함되는 가족은?", o: ["직계 존비속", "형제자매", "본인만", "친척"], a: 0, c: "실거주 범위", r: "집주인 본인과 부모(직계존속), 자녀(직계비속)가 들어와 사는 경우만 인정됩니다." },
+                    { q: "계약 만료 전 통지가 없어 자동 연장되는 것은?", o: ["법정 갱신", "약정 갱신", "강제 갱신", "임의 갱신"], a: 0, c: "묵시적 갱신", r: "서로 아무 말 없이 기간이 지나면 전 계약과 동일한 조건으로 연장된 것으로 봅니다." },
+                    { q: "임차인은 법정 기간(2년)보다 짧은 약정 유효함 주장 가능?", o: ["있다", "없다", "판사 재량", "집주인 동의 시"], a: 0, c: "편면적 강행규정", r: "법은 임차인을 보호하기 위한 것이므로, 임차인에게 유리한 경우 짧은 기간을 주장할 수 있습니다." },
+                    { q: "상가 임대차의 최단 존속 기간은?", o: ["1년", "2년", "3년", "6개월"], a: 0, c: "상가 최단기간", r: "상가건물 임대차보호법에서는 최단 존속 기간을 1년으로 규정하고 있습니다." }
+                ]
+            }
+        };
+
+        // --- Logic ---
+        const menuScreen = document.getElementById('menu-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultModal = document.getElementById('result-modal');
+        const finalScreen = document.getElementById('final-screen');
+        
+        const passageList = document.getElementById('passage-list');
+        const optionsContainer = document.getElementById('options-container');
+        const progressBar = document.getElementById('progress-bar');
+
+        // Modal Elements
+        const modalTitle = document.getElementById('modal-title');
+        const modalFeedback = document.getElementById('modal-feedback');
+        const modalRationale = document.getElementById('modal-rationale');
+        const modalStatusBar = document.getElementById('modal-status-bar');
+
+        let currentQuestions = [];
+        let currentQIndex = 0;
+        let score = 0;
+
+        function initMenu() {
+            passageList.innerHTML = '';
+            for (const key in quizData) {
+                const item = quizData[key];
+                const btn = document.createElement('button');
+                btn.className = "target-btn w-full bg-gray-800 hover:bg-gray-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg border-l-4 border-red-600 text-left flex items-center justify-between group";
+                btn.innerHTML = `
+                    <div>
+                        <span class="text-xs text-red-500 font-mono mb-1 block group-hover:text-red-400">MISSION ${key.toUpperCase()}</span>
+                        <span class="text-lg md:text-xl group-hover:text-white text-gray-200">${item.title}</span>
+                    </div>
+                    <span class="text-2xl opacity-0 group-hover:opacity-100 transition-opacity">🔫</span>
+                `;
+                btn.onclick = () => startMission(key);
+                passageList.appendChild(btn);
+            }
+        }
+
+        function startMission(key) {
+            // Shallow copy questions to avoid modifying original order permanently if we wanted random order
+            currentQuestions = [...quizData[key].questions];
+            currentQIndex = 0;
+            score = 0;
+            
+            document.getElementById('current-topic').innerText = quizData[key].title;
+            document.getElementById('q-total').innerText = currentQuestions.length;
+            
+            menuScreen.classList.add('hidden');
+            finalScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            if (currentQIndex >= currentQuestions.length) {
+                showFinalResult();
+                return;
+            }
+
+            const qData = currentQuestions[currentQIndex];
+            document.getElementById('q-current').innerText = currentQIndex + 1;
+            document.getElementById('question-text').innerText = qData.q;
+            
+            const progress = ((currentQIndex) / currentQuestions.length) * 100;
+            progressBar.style.width = `${progress}%`;
+
+            optionsContainer.innerHTML = '';
+            const indices = [0, 1, 2, 3];
+            // Shuffle
+            for (let i = indices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [indices[i], indices[j]] = [indices[j], indices[i]];
+            }
+
+            indices.forEach(idx => {
+                const btn = document.createElement('button');
+                btn.className = "target-btn w-full bg-gray-700 hover:bg-gray-600 text-white font-medium py-4 px-6 rounded-lg border-b-4 border-gray-900 active:border-b-0 text-lg shadow-md transition-transform transform active:scale-[0.98] text-left";
+                btn.innerText = qData.o[idx];
+                btn.onclick = (e) => handleShot(e, idx === qData.a);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function handleShot(e, isCorrect) {
+            const rect = e.target.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const hole = document.createElement('div');
+            hole.className = 'hole';
+            hole.style.left = x + 'px';
+            hole.style.top = y + 'px';
+            e.target.appendChild(hole);
+
+            if (isCorrect) {
+                score++;
+                e.target.classList.remove('bg-gray-700', 'border-gray-900');
+                e.target.classList.add('bg-green-600', 'border-green-800');
+            } else {
+                e.target.classList.add('bg-red-600', 'shake');
+            }
+
+            // Disable buttons
+            const btns = optionsContainer.querySelectorAll('button');
+            btns.forEach(b => b.disabled = true);
+
+            // Show Result Modal after short delay
+            setTimeout(() => {
+                showModal(isCorrect);
+            }, 600);
+        }
+
+        function showModal(isCorrect) {
+            const qData = currentQuestions[currentQIndex];
+            
+            // Dynamic Messages
+            const praiseList = [
+                `완벽합니다! '${qData.c}' 개념을 정확히 조준했군요.`,
+                `훌륭한 사격입니다. '${qData.c}'에 대해 완벽히 이해하고 계십니다.`,
+                `명중입니다! '${qData.c}'의 핵심을 꿰뚫으셨군요.`
+            ];
+            const blameList = [
+                `빗나갔습니다! '${qData.c}' 개념을 다시 확인하십시오.`,
+                `오답입니다. '${qData.c}'에 대한 이해가 부족해 보입니다.`,
+                `허공에 쏘셨군요. '${qData.c}' 내용을 복습해야 합니다.`
+            ];
+
+            const msg = isCorrect 
+                ? praiseList[Math.floor(Math.random() * praiseList.length)] 
+                : blameList[Math.floor(Math.random() * blameList.length)];
+
+            modalTitle.innerText = isCorrect ? "TARGET ELIMINATED" : "MISSION FAILED";
+            modalTitle.className = `text-4xl md:text-5xl title-font mb-4 text-center mt-2 ${isCorrect ? 'text-green-500' : 'text-red-500'}`;
+            
+            modalFeedback.innerText = msg;
+            modalFeedback.className = `text-xl font-bold mb-4 text-center ${isCorrect ? 'text-green-300' : 'text-red-300'}`;
+            
+            modalRationale.innerText = qData.r;
+            modalStatusBar.className = `absolute top-0 left-0 w-full h-3 ${isCorrect ? 'bg-green-600' : 'bg-red-600'}`;
+
+            resultModal.classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            resultModal.classList.add('hidden');
+            currentQIndex++;
+            loadQuestion();
+        }
+
+        function showFinalResult() {
+            quizScreen.classList.add('hidden');
+            finalScreen.classList.remove('hidden');
+            
+            document.getElementById('final-score').innerText = `${score}/${currentQuestions.length}`;
+            
+            const rankBadge = document.getElementById('rank-badge');
+            const finalMsg = document.getElementById('final-msg');
+            const percentage = (score / currentQuestions.length) * 100;
+            
+            if (percentage === 100) {
+                rankBadge.innerText = "RANK S (SNIPER)";
+                rankBadge.className = "inline-block px-8 py-2 bg-yellow-500 text-black font-black text-2xl rounded-full mb-6 transform rotate-[-2deg] shadow-[0_0_20px_rgba(234,179,8,0.8)]";
+                finalMsg.innerText = "전설적인 실력입니다. 교과서를 완전히 장악하셨군요.";
+                finalMsg.className = "text-xl text-yellow-400 font-bold";
+            } else if (percentage >= 70) {
+                rankBadge.innerText = "RANK A (VETERAN)";
+                rankBadge.className = "inline-block px-8 py-2 bg-green-600 text-white font-bold text-2xl rounded-full mb-6 shadow-lg";
+                finalMsg.innerText = "훌륭한 전투력입니다. 실전 투입이 가능합니다.";
+                finalMsg.className = "text-xl text-green-400 font-medium";
+            } else {
+                rankBadge.innerText = "RANK F (TRAINEE)";
+                rankBadge.className = "inline-block px-8 py-2 bg-gray-600 text-white font-bold text-2xl rounded-full mb-6 shadow-lg";
+                finalMsg.innerText = "재훈련이 필요합니다. 제시문을 다시 읽고 오십시오.";
+                finalMsg.className = "text-xl text-gray-400 font-medium";
+            }
+        }
+
+        function returnToMenu() {
+            quizScreen.classList.add('hidden');
+            finalScreen.classList.add('hidden');
+            resultModal.classList.add('hidden');
+            menuScreen.classList.remove('hidden');
+        }
+
+        initMenu();
+    </script>
+</body>
+</html>
